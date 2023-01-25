@@ -1,0 +1,62 @@
+{
+    "apiVersion": "1.3",
+    "version": "1.0",
+    "name": "Mod starter",
+    "id": "js-dev-starter",
+    "icon": "icon.svg",
+    "properties": [
+        {
+            "name": "modSettings",
+            "type": "string",
+            "defaultValue": "{}"
+        },
+        {
+            "name": "useCustomRowIdentifierExpression",
+            "type": "boolean",
+            "defaultValue": false
+        }
+    ],
+    "dataViewDefinition": {
+        "tooltip": {
+            "enabled": true
+        },
+        "axes": [
+            {
+                "name": "Row ID",
+                "mode": "dual",
+                "placement": "top",
+                "dropTarget": {
+                    "icon": "RowAxis",
+                    "description": "set {0} as the row axis (the key is the value that identifies each row)"
+                }
+            },
+            {
+                "name": "Actual",
+                "mode": "categorical",
+                "placement": "left",
+                "allowMultipleMeasures": false,
+                "allowNonAggregatingMeasures": true,
+                "dropTarget": {
+                    "icon": "XAxis3D",
+                    "description": "set {0} as the Actual classification"
+                }
+            },
+            {
+                "name": "Predicted",
+                "allowMultipleMeasures": false,
+                "allowNonAggregatingMeasures": true,
+                "mode": "categorical",
+                "placement": "bottom",
+                "dropTarget": {
+                    "icon": "YAxis3D",
+                    "description": "set {0} as the Predicted classification"
+                }
+            }
+        ]
+    },
+    "files": [
+        "index.html",
+        "main.css",
+        "main.js"
+    ]
+}
