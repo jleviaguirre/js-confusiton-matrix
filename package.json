@@ -7,7 +7,7 @@
         "server": "mods-dev-server src"
     },
     "keywords": [],
-    "author": "",
+    "author": "Jose Leviaguirre",
     "license": "ISC",
     "devDependencies": {
         "@tibco/spotfire-mods-dev-server": "^1.0.1"

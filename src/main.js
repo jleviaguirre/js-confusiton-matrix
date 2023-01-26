@@ -92,22 +92,16 @@ Spotfire.initialize(async (mod) => {
         // var csv = "";for (var i = 0; i < arr1.length; i++) {csv += arr1[i] + "," + arr2[i] + "\n";}console.log(csv);
 
         //2.1b Get data from spotfire (comment block to use sample data from 2.1a)
-        //helper function that gets a tupple from the data
-
-
         let rows = dataView.allRows();
-        let arr1 = (await rows).map((r,i) => {return {dataViewRow:"r"+i,category:r.categorical("Actual").formattedValue()}});
-        let arr2 = (await rows).map((r,i) => {return {dataViewRow:"r"+i,category:r.categorical("Predicted").formattedValue()}});
+        let arr1 = (await rows).map((r,i) => {return {dataViewRow:r,category:r.categorical("Actual").formattedValue()}});
+        let arr2 = (await rows).map((r,i) => {return {dataViewRow:r,category:r.categorical("Predicted").formattedValue()}});
 // arr1 = arr1.slice(0,4);
 // arr2 = arr2.slice(0,4);
 // console.log(arr1,arr2);
                               
         //3 Settings
         //read settings from mod. Default is {} but will take default values from input controls 
-        // ConfusionMatrix.settings.init();
-
-
-
+        // ConfusionMatrix.settings.init(); //doesent work. let's try another way...
 
         // reads and writes settings. Can't figure out how to move this funciton to Matrix.js and pass modSettings as a parameter
         (function initSettings() {
@@ -147,11 +141,13 @@ Spotfire.initialize(async (mod) => {
 
         })();
 
+        //get settings
+        let chartSettings = ConfusionMatrix.settings.chartSettings();
+
         // let compute = ConfusionMatrix.compute(arr1,arr2);
-        let compute = ConfusionMatrix.compute2(arr1,arr2);
+        let compute = ConfusionMatrix.compute(arr1,arr2, chartSettings.isSorted);
         console.log(compute)
 
-        let chartSettings = ConfusionMatrix.settings.chartSettings();
         ConfusionMatrix.draw({
             container: '.container',
             height: windowSize.height,
@@ -163,7 +159,7 @@ Spotfire.initialize(async (mod) => {
             showZeros: chartSettings.showZeros,
             data: compute.matrix,
             labels: compute.categories
-        }, context.styling);
+        }, context.styling, mod.controls.tooltip); 
 
 
         // Signal that the mod is ready for export.

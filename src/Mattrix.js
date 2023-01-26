@@ -134,10 +134,11 @@ const ConfusionMatrix = {
 	// ] 
 	// where "r2" is an actual dataViewRow
 	*/
-	compute: (actual, predicted) => {
+	compute: (actual, predicted, isSorted) => {
 		const actualCategories = actual.map(x => x.category)
 		const predictedCategories = predicted.map(y => y.category)
-		const categories = Array.from(new Set(actualCategories.concat(predictedCategories))).sort();
+		const categories = Array.from(new Set(actualCategories.concat(predictedCategories)))
+		if (isSorted) categories.sort();
 
 		//init square matrix
 		let matrix = categories.map(() => {
@@ -158,7 +159,7 @@ const ConfusionMatrix = {
 			if (key in matrixValues) {
 				matrixValues[key].dataViewRows.push(dataViewRow);
 			} else {
-				matrixValues[key] = {dataViewRows: [dataViewRow] };
+				matrixValues[key] = { dataViewRows: [dataViewRow] };
 			}
 		}
 
@@ -219,20 +220,21 @@ const ConfusionMatrix = {
 				.scales.font.fontFamily
 				.scales.font.color
 	*/
-	draw: function (options, styling) {
+	draw: function (options, styling, tooltip) {
 
 		//need to compute left and bottom margins depending on labels
 		//TODO
 
-		let minMax = getMinMax(options.data)
+		let counts = options.data.map(x => x.map(x => x.length));
+		let minMax = getMinMax(counts)
 
-		let margin = { top: 5, right: 5, bottom: 50, left: 50 },
+		let margin = { top: 5, right: 5, bottom: 80, left: 80 },
 			width = options.width - 80,    //TODO cut vertical labels width
 			height = options.height - 100, //TODO cut text height
 			data = options.data,
 			container = options.container,
 			labelsData = options.labels,
-			numrows = data.length, 
+			numrows = data.length,
 			numcols = data[0].length,
 			minColor = options.maxColor,
 			maxColor = options.minColor,
@@ -242,8 +244,9 @@ const ConfusionMatrix = {
 			min = minMax[0],
 			max = minMax[1];
 
-			// data = options.data.map(x=>x.map(x=>x.length));
-			// let data2 = options.data;
+
+		// data = options.data.map(x=>x.map(x=>x.length));
+		// let data2 = options.data;
 
 
 		/*	TODO show error layer but check before calling funciton
@@ -262,17 +265,19 @@ const ConfusionMatrix = {
 			.append("g")
 			.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+		//outer box
 		var background = svg.append("rect")
 			.style("stroke", styling.scales.line.stroke)
 			.style("stroke-width", "2px")
 			.attr("width", width)
 			.attr("height", height);
 
-
+		//columns
 		var x = d3.scale.ordinal()
 			.domain(d3.range(numcols))
 			.rangeBands([0, width]);
 
+		//rows
 		var y = d3.scale.ordinal()
 			.domain(d3.range(numrows))
 			.rangeBands([0, height]);
@@ -285,23 +290,35 @@ const ConfusionMatrix = {
 			.data(data)
 			.enter().append("g")
 			.attr("class", "row")
-			.attr("transform", function (d, i) {return "translate(0," + y(i) + ")"; });
+			.attr("transform", function (d, i) { return "translate(0," + y(i) + ")"; });
 
 		var cell = row.selectAll(".cell")
-			// .data(function (d,i) { return d})
-			// .data(function (d,i) { return d.map(x=>x.length);})
-			.data(function (d,i) { return d})
+			.data(function (d, i) { return d.map(x => x.length) })
 			.enter().append("g")
 			.attr("class", "cell")
 			.attr("transform", function (d, i) { return "translate(" + x(i) + ", 0)"; })
-			.on("mouseover", (d,x,y) => { console.log(d, x, y, cell, row[0][x], data[x][y]) })
-			.on("mouseout", () => { });
+			.on("mouseover", (val, y, x) => {
+				if (!val) return; //no data for zero count
+				if (!true) {
+					tooltip.show(data[x][y][0]) //this is the out of the box tooltip. It does not show the cell value, which is the data[x][y].length 
+				} else {
+					let dvr = data[x][y][0]
+					let tt = "Count:\t\t" + val + "\n"
+					tt += "Actual:\t\t" + (dvr.categorical("Actual").formattedValue()) + "\n"
+					tt += "Predicted:\t" + (dvr.categorical("Predicted").formattedValue())
+					tooltip.show(tt) //use custom tooltips that shows not only categories, but cell value (TODO)
+				}
+			})
+			.on("mouseout", () => { tooltip.hide() });
+
+
 
 		cell.append('rect')
 			.attr("width", x.rangeBand())
 			.attr("height", y.rangeBand())
-			.style("stroke-width", 0);
+			.style("stroke", styling.scales.line.stroke)
 
+		// show values	
 		if (showValues) cell.append("text")
 			.attr("dy", ".32em")
 			.attr("x", x.rangeBand() / 2)
@@ -311,12 +328,14 @@ const ConfusionMatrix = {
 			.style("fill", styling.general.font.color)
 			.text(function (d, i) { return showZeros ? d ? d : "" : d });
 
+		//colorize cells
 		row.selectAll(".cell")
-			.data(function (d, i) { return data[i]; })
+			.data(function (d, i) { return counts[i]; })
 			.style("fill", colorMap);
 
 		var labels = svg.append('g')
-			.attr('class', "labels");
+			.attr('class', "labels")
+			.style("display", showLabels ? 'block' : 'none')
 
 		var columnLabels = labels.selectAll(".column-label")
 			.data(labelsData)
@@ -332,20 +351,28 @@ const ConfusionMatrix = {
 			.attr("y1", 0)
 			.attr("y2", 5);
 
+		let cellWidth = d3.select(".row .cell rect").attr("width");
+		let cellHeight = d3.select(".row .cell rect").attr("height");
+
+		//column labels
 		columnLabels.append("text")
-			.attr("x", 6)
+			.attr("x", -margin.bottom+20)
 			.attr("y", y.rangeBand() / 2)
 			.attr("dy", ".32em")
-			.attr("text-anchor", "end")
+			.attr("text-anchor", "start")
 			.style("fill", styling.scales.font.color)
 			.style("font-family", styling.scales.font.fontFamily)
 			.style("font-size", styling.scales.font.fontSize)
 			.style("font-weight", styling.scales.font.fontWeight)
+
 			// .attr("transform", function (d, i) { return "translate(" + 0 + "," + 15 + ")rotate(-00)"; })
 			.attr('transform', 'translate(2,15)rotate(-90)')
 
 			// .attr("transform", "translate(35,-5)") //===== vertical | horizontal 
-			.text(function (d, i) { return d; });
+			.text(function (d, i) { return d; })
+			.on("mouseover", (text, row) => { tooltip.show(text) })
+			.on("mouseout", tooltip.hide)
+			.each(function () {ellipsis(d3.select(this),margin.bottom)});
 
 		var rowLabels = labels.selectAll(".row-label")
 			.data(labelsData)
@@ -361,17 +388,44 @@ const ConfusionMatrix = {
 			.attr("y1", y.rangeBand() / 2)
 			.attr("y2", y.rangeBand() / 2);
 
+		//row labels
 		rowLabels.append("text")
-			.attr("x", -8)
+			// .attr("x", -x.rangeBand()/3.5)
+			.attr("x", -margin.left)
 			.attr("y", y.rangeBand() / 2)
 			.attr("dy", ".32em")
-			.attr("text-anchor", "end")
+			.attr("text-anchor", "start") //start|end|middle
 			.style("fill", styling.scales.font.color)
 			.style("font-family", styling.scales.font.fontFamily)
 			.style("font-size", styling.scales.font.fontSize)
 			.style("font-weight", styling.scales.font.fontWeight)
-			.text(function (d, i) { if (showLabels) return d; });
+			.style("cursor", "default")
+			.text(function (d, i) { return d; })
+			.on("mouseover", (text, row) => { tooltip.show(text) })
+			.on("mouseout", tooltip.hide)
+			.each(function () {ellipsis(d3.select(this),margin.left)});
+		// .each(ellipsis);
 
+		
+
+		//helper function to add overflowing text (like css text-overflow:ellipsis)
+		function ellipsis(self,width) {
+			var textLength = self.node().getComputedTextLength(),
+				text = self.text();
+
+			// while (textLength > (width - 2 * padding) && text.length > 0) {
+			while (textLength > (width-10) && text.length > 0) {
+				text = text.slice(0, -1);
+				self.text(text + '...');
+				textLength = self.node().getComputedTextLength();
+			}
+		}
+
+		//another vresion of the ellipsis
+
+
+
+		//maybe this function can highlight related data, but...how to highlight data?
 		function mouseover(p) {
 			d3.selectAll(".row text").classed("active", function (d, i) { return i == p.y; });
 			d3.selectAll(".column text").classed("active", function (d, i) { return i == p.x; });
@@ -388,7 +442,8 @@ const ConfusionMatrix = {
 				color2: document.getElementById("color2").value,
 				showLabels: document.getElementById("showLabels").checked,
 				showValues: document.getElementById("showValues").checked,
-				showZeros: document.getElementById("showZeros").checked
+				showZeros: document.getElementById("showZeros").checked,
+				isSorted: document.getElementById("isSorted").checked
 			}
 		},
 
