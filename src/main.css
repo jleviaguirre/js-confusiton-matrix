@@ -182,7 +182,12 @@ body {
     right: 0px;
     top: 0px;
     margin-right: 5px;
-    cursor: pointer;
+    cursor: default;
     z-index: 30;
 }
+
+.cell, .column-label text{
+    cursor: default;
+}
+
 

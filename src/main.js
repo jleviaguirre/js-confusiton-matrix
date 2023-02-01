@@ -72,7 +72,6 @@ Spotfire.initialize(async (mod) => {
             ConfusionMatrix.clearWarning(modDiv);
         }
 
-
         //1.b Check the additional errors
         if (errors.length > 0) {
             mod.controls.errorOverlay.show(errors);
@@ -88,17 +87,29 @@ Spotfire.initialize(async (mod) => {
         // let arr1 = ['black', 'pink', 'pink', 'pink', 'orange', 'black', 'purple', 'yellow', "orange"]
         // let arr2 = ['black', 'pink', 'pink', 'pink', 'pink', 'black', 'purple', 'yellow', "orange"]
 
-        //2.1a use this to export sample data to CSV and paste it to a dxp
+        //2.1a-1 use this to export sample data to CSV and paste it to a dxp
         // var csv = "";for (var i = 0; i < arr1.length; i++) {csv += arr1[i] + "," + arr2[i] + "\n";}console.log(csv);
 
         //2.1b Get data from spotfire (comment block to use sample data from 2.1a)
         let rows = dataView.allRows();
-        let arr1 = (await rows).map((r,i) => {return {dataViewRow:r,category:r.categorical("Actual").formattedValue()}});
-        let arr2 = (await rows).map((r,i) => {return {dataViewRow:r,category:r.categorical("Predicted").formattedValue()}});
-// arr1 = arr1.slice(0,4);
-// arr2 = arr2.slice(0,4);
-// console.log(arr1,arr2);
-                              
+
+        //2.1b-1 check if axis have data
+        let arr1,arr2,hasErrors=false;
+        try{
+            arr1 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Actual").formattedValue() } });
+            arr2 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Predicted").formattedValue() } });
+        } catch(err){
+            hasErrors=true;
+            d3.select(".container").html("");
+            return;
+        }
+
+
+
+        // test with a smaller data set
+        // arr1 = arr1.slice(0,4);
+        // arr2 = arr2.slice(0,4);
+
         //3 Settings
         //read settings from mod. Default is {} but will take default values from input controls 
         // ConfusionMatrix.settings.init(); //doesent work. let's try another way...
@@ -144,9 +155,9 @@ Spotfire.initialize(async (mod) => {
         //get settings
         let chartSettings = ConfusionMatrix.settings.chartSettings();
 
+
         // let compute = ConfusionMatrix.compute(arr1,arr2);
-        let compute = ConfusionMatrix.compute(arr1,arr2, chartSettings.isSorted);
-        console.log(compute)
+        let compute = ConfusionMatrix.compute(arr1, arr2, chartSettings.isSorted);
 
         ConfusionMatrix.draw({
             container: '.container',
@@ -159,7 +170,7 @@ Spotfire.initialize(async (mod) => {
             showZeros: chartSettings.showZeros,
             data: compute.matrix,
             labels: compute.categories
-        }, context.styling, mod.controls.tooltip); 
+        }, context.styling, mod.controls.tooltip);
 
 
         // Signal that the mod is ready for export.

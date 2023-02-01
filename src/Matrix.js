@@ -97,7 +97,7 @@ const ConfusionMatrix = {
 				axis.setExpression("<baserowid()>");
 			} else {
 				axis.parts.unshift({ displayName: "(Row Number)", expression: "baserowid()" })
-				console.log(axis.parts.map(x => { return x.displayName }));//CACA
+				// console.log(axis.parts.map(x => { return x.displayName }));//CACA
 				let newExpression = axis.parts.map(p => { return p.expression }).join(" NEST ");
 				axis.setExpression(`<${newExpression}>`);
 			}
@@ -178,43 +178,10 @@ const ConfusionMatrix = {
 		};
 	},
 
-	/*
-	//actual and predicted input parameters are arrays of objects [{value:category1,dataViewRow:dataViewRow1},..{value:categoryN,dataViewRow:dataViewRowN}]
-	//dataViewRow is the same value on both arrays
-	//returns a confusion matrix object from the same input parameters as this.compute
-	//[
-	//  [1,0,2],
-	//  [0,0,0],
-	//  [0,1,0]
-	// ] 
-	*/
-	compute2: (arr1, arr2) => {
-		let actual = arr1.map(x => x.category)
-		let predicted = arr2.map(y => y.category)
-		var categories = Array.from(new Set(actual.concat(predicted))).sort();
-		var matrix = [];
-		for (var i = 0; i < categories.length; i++) {
-			matrix.push(new Array(categories.length).fill(0));
-		}
-		for (var i = 0; i < actual.length; i++) {
-			var act = actual[i];
-			var pre = predicted[i];
-			var actIndex = categories.indexOf(act);
-			var preIndex = categories.indexOf(pre);
-			matrix[actIndex][preIndex]++;
-		}
-		return {
-			matrix: matrix,
-			categories: categories
-		};
-	},
-
-
-
 	//draws a confusion matrix array defined in options.data
 	/*font info
 	styling.general
-						.font.fontWeight 
+				.font.fontWeight 
 				.scales.font.fontStyle 
 				.scales.font.fontSize
 				.scales.font.fontFamily
@@ -356,7 +323,7 @@ const ConfusionMatrix = {
 
 		//column labels
 		columnLabels.append("text")
-			.attr("x", -margin.bottom+20)
+			.attr("x", -margin.bottom + 20)
 			.attr("y", y.rangeBand() / 2)
 			.attr("dy", ".32em")
 			.attr("text-anchor", "start")
@@ -372,13 +339,13 @@ const ConfusionMatrix = {
 			.text(function (d, i) { return d; })
 			.on("mouseover", (text, row) => { tooltip.show(text) })
 			.on("mouseout", tooltip.hide)
-			.each(function () {ellipsis(d3.select(this),margin.bottom)});
+			.each(function () { ellipsis(d3.select(this), margin.bottom) });
 
 		var rowLabels = labels.selectAll(".row-label")
 			.data(labelsData)
 			.enter().append("g")
 			.attr("class", "row-label")
-			.attr("transform", function (d, i) { return "translate(" + 0 + "," + y(i) + ")"; });
+			.attr("transform", function (d, i) { return "translate(" + 10 + "," + y(i) + ")"; });
 
 		rowLabels.append("line")
 			.style("stroke", styling.scales.tick.stroke)
@@ -403,18 +370,18 @@ const ConfusionMatrix = {
 			.text(function (d, i) { return d; })
 			.on("mouseover", (text, row) => { tooltip.show(text) })
 			.on("mouseout", tooltip.hide)
-			.each(function () {ellipsis(d3.select(this),margin.left)});
+			.each(function () { ellipsis(d3.select(this), margin.left) });
 		// .each(ellipsis);
 
-		
+
 
 		//helper function to add overflowing text (like css text-overflow:ellipsis)
-		function ellipsis(self,width) {
+		function ellipsis(self, width) {
 			var textLength = self.node().getComputedTextLength(),
 				text = self.text();
 
 			// while (textLength > (width - 2 * padding) && text.length > 0) {
-			while (textLength > (width-10) && text.length > 0) {
+			while (textLength > (width - 10) && text.length > 0) {
 				text = text.slice(0, -1);
 				self.text(text + '...');
 				textLength = self.node().getComputedTextLength();
