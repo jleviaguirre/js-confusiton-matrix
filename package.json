@@ -1,12 +1,24 @@
 {
-    "name": "mod-starter",
+    "name": "tibco-mods-confusion-matrix",
     "version": "1.0.0",
     "description": "",
     "scripts": {
         "start": "npm ci && npm run server",
         "server": "mods-dev-server src"
     },
-    "keywords": [],
+    "keywords": [
+        "confusion matrix",
+        "error matrix",
+        "multivariate",
+        "correlation",
+        "data science",
+        "mods",
+        "mod",
+        "analytics",
+        "spotfire",
+        "TIBCO",
+        "visualization"
+    ],
     "author": "Jose Leviaguirre",
     "license": "ISC",
     "devDependencies": {
