@@ -1,6 +1,6 @@
 {
     "apiVersion": "1.3",
-    "version": "1.0",
+    "version": "1.0.0",
     "name": "Confusion Matrix",
     "id": "tibco-mods-confusionMatrix",
     "icon": "icon.svg",
