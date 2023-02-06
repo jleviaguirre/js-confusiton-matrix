@@ -297,8 +297,8 @@ const ConfusionMatrix = {
 
 		//colorize cells
 		row.selectAll(".cell")
-			.data(function (d, i) { return counts[i]; })
-			.style("fill", colorMap);
+			.data(function (d, i) {return counts[i]; })
+			.style("fill", function(d,i){return d?colorMap(i):styling.general.backgroundColor});
 
 		var labels = svg.append('g')
 			.attr('class', "labels")
