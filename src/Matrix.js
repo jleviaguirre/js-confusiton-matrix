@@ -196,8 +196,8 @@ const ConfusionMatrix = {
 		let minMax = getMinMax(counts)
 
 		let margin = { top: 5, right: 5, bottom: 80, left: 80 },
-			width = options.width - 80,    //TODO cut vertical labels width
-			height = options.height - 100, //TODO cut text height
+			width = options.width - 50,    //TODO cut vertical labels width
+			height = options.height - 50, //TODO cut text height
 			data = options.data,
 			container = options.container,
 			labelsData = options.labels,
@@ -210,6 +210,7 @@ const ConfusionMatrix = {
 			showZeros = options.showZeros,
 			min = minMax[0],
 			max = minMax[1];
+			
 
 
 		// data = options.data.map(x=>x.map(x=>x.length));
@@ -266,8 +267,8 @@ const ConfusionMatrix = {
 			.attr("transform", function (d, i) { return "translate(" + x(i) + ", 0)"; })
 			.on("mouseover", (val, y, x) => {
 				if (!val) return; //no data for zero count
-				if (!true) {
-					tooltip.show(data[x][y][0]) //this is the out of the box tooltip. It does not show the cell value, which is the data[x][y].length 
+				if (!true) { //test oob tooltip (can't show cell value, so we use custom method, which is data[x][y].length)
+					tooltip.show(data[x][y][0]) 
 				} else {
 					let dvr = data[x][y][0]
 					let tt = "Count:\t\t" + val + "\n"
@@ -279,11 +280,11 @@ const ConfusionMatrix = {
 			.on("mouseout", () => { tooltip.hide() });
 
 
-
+			//horizontal grid lines
 		cell.append('rect')
 			.attr("width", x.rangeBand())
 			.attr("height", y.rangeBand())
-			.style("stroke", styling.scales.line.stroke)
+			.style("stroke", styling.scales.line.stroke) 
 
 		// show values	
 		if (showValues) cell.append("text")
@@ -292,13 +293,13 @@ const ConfusionMatrix = {
 			.attr("y", y.rangeBand() / 2)
 			.attr("text-anchor", "middle")
 			// .style("fill", function (d, i) { return d >= 0.5 ? 'white' : 'black'; }) //this one is good if the confusion matrix scale is from 0 to 1 to display accuracy
-			.style("fill", styling.general.font.color)
+			.style("fill", function(d,i){return Colors.bestContrastColor(colorMap(i),styling.general.font.color)})
 			.text(function (d, i) { return showZeros ? d ? d : "" : d });
 
 		//colorize cells
 		row.selectAll(".cell")
 			.data(function (d, i) {return counts[i]; })
-			.style("fill", function(d,i){return d?colorMap(i):styling.general.backgroundColor});
+			.style("fill", function(d,i){return d>0?colorMap(i):styling.general.backgroundColor});
 
 		var labels = svg.append('g')
 			.attr('class', "labels")
@@ -310,36 +311,43 @@ const ConfusionMatrix = {
 			.attr("class", "column-label")
 			.attr("transform", function (d, i) { return "translate(" + x(i) + "," + height + ")"; });
 
+		//x ticks
 		columnLabels.append("line")
-			.style("stroke", styling.scales.tick.stroke)
+			.style("stroke", styling.scales.tick.stroke)  //ticks
 			.style("stroke-width", "1px")
 			.attr("x1", x.rangeBand() / 2)
 			.attr("x2", x.rangeBand() / 2)
 			.attr("y1", 0)
-			.attr("y2", 5);
+			.attr("y2", 5); //5
 
 		let cellWidth = d3.select(".row .cell rect").attr("width");
 		let cellHeight = d3.select(".row .cell rect").attr("height");
 
-		//column labels
+		//x labels
 		columnLabels.append("text")
-			.attr("x", -margin.bottom + 20)
-			.attr("y", y.rangeBand() / 2)
-			.attr("dy", ".32em")
-			.attr("text-anchor", "start")
-			.style("fill", styling.scales.font.color)
-			.style("font-family", styling.scales.font.fontFamily)
-			.style("font-size", styling.scales.font.fontSize)
-			.style("font-weight", styling.scales.font.fontWeight)
+		.attr("x", 0 )
+		// .attr("y", y.rangeBand() / 2 )
+		.style("text-anchor", "left")
+		.style("fill", styling.scales.font.color)
+		.style("font-family", styling.scales.font.fontFamily)
+		.style("font-size", styling.scales.font.fontSize)
+		.style("font-weight", styling.scales.font.fontWeight)
+		// .attr("transform", `translate(0, ${-y.rangeBand() / 2}) rotate(-90)`)
+		.text(function (d, i) { return d; })
+		.on("mouseover", (text, row) => { tooltip.show(text) })
+		.on("mouseout", tooltip.hide)
+		.each(function () { ellipsis(d3.select(this), cellWidth) })
+		.each(function () { 
+			self = d3.select(this);
+			//center
+			var textLength = self.node().getComputedTextLength();
+			self.attr("x",(cellWidth-textLength)/2)
 
-			// .attr("transform", function (d, i) { return "translate(" + 0 + "," + 15 + ")rotate(-00)"; })
-			.attr('transform', 'translate(2,15)rotate(-90)')
+			//margin top 1/2 font height
+			txtHeight = self.node().getBoundingClientRect().height;
+			self.attr("y",y.rangeBand()/4 + txtHeight/2);
 
-			// .attr("transform", "translate(35,-5)") //===== vertical | horizontal 
-			.text(function (d, i) { return d; })
-			.on("mouseover", (text, row) => { tooltip.show(text) })
-			.on("mouseout", tooltip.hide)
-			.each(function () { ellipsis(d3.select(this), margin.bottom) });
+		});
 
 		var rowLabels = labels.selectAll(".row-label")
 			.data(labelsData)
@@ -347,21 +355,20 @@ const ConfusionMatrix = {
 			.attr("class", "row-label")
 			.attr("transform", function (d, i) { return "translate(" + 10 + "," + y(i) + ")"; });
 
+		//y ticks
 		rowLabels.append("line")
-			.style("stroke", styling.scales.tick.stroke)
+			.style("stroke", styling.scales.tick.stroke) 
 			.style("stroke-width", "1px")
-			.attr("x1", 0)
-			.attr("x2", -5)
+			.attr("x1", -10)
+			.attr("x2", -15)
 			.attr("y1", y.rangeBand() / 2)
 			.attr("y2", y.rangeBand() / 2);
 
-		//row labels
+		//y labels
 		rowLabels.append("text")
-			// .attr("x", -x.rangeBand()/3.5)
-			.attr("x", -margin.left)
-			.attr("y", y.rangeBand() / 2)
-			.attr("dy", ".32em")
-			.attr("text-anchor", "start") //start|end|middle
+
+			.attr("x", -25)
+			.attr("text-anchor", "end") //start|end|middle
 			.style("fill", styling.scales.font.color)
 			.style("font-family", styling.scales.font.fontFamily)
 			.style("font-size", styling.scales.font.fontSize)
@@ -370,13 +377,19 @@ const ConfusionMatrix = {
 			.text(function (d, i) { return d; })
 			.on("mouseover", (text, row) => { tooltip.show(text) })
 			.on("mouseout", tooltip.hide)
-			.each(function () { ellipsis(d3.select(this), margin.left) });
-		// .each(ellipsis);
+			.each(function () { ellipsis(d3.select(this), margin.left) })
+			.each(function () { 
+				self = d3.select(this);
+				txtHeight = self.node().getBoundingClientRect().height;
+				self.attr("y",y.rangeBand()/2 + txtHeight/4);
+			});
+	
 
 
 
 		//helper function to add overflowing text (like css text-overflow:ellipsis)
 		function ellipsis(self, width) {
+			
 			var textLength = self.node().getComputedTextLength(),
 				text = self.text();
 
