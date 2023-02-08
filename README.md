@@ -5,6 +5,30 @@ For example, if we train a model to classify 100 image instances into 10 classes
 
 All source code for the mod example can be found in the `src` folder.
 
+## Data Requirements
+1. Use a unique tire identifier such as rowid for the row is axis
+2. Use the predicted and actual axes to select a categorical column
+
+For example, say you have a machine learning model that it's trained to recognize written digit numbers from 0-9 from different tests. The actual are the written numbers by a person and the predicted is the output of the machine learning model algorithm. A small data set sample would look like this:
+
+```
+TestID,Actual, predicted
+ 01,0, 0
+ 02,0,8
+ 03,1,1
+ 04,2,2
+ 05,3,3
+ 06,4,9
+ 07,4,4
+ 08,5,2
+ 09,8,3
+ 10,9,6
+ 11,9,9
+ 12,9,9
+ ```
+
+
+
 ## Prerequisites
 These instructions assume that you have [Node.js](https://nodejs.org/en/) (which includes npm) installed.
 
