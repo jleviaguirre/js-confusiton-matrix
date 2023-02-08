@@ -63,7 +63,7 @@ Spotfire.initialize(async (mod) => {
 
 
         //1.a Check if ID is empty
-        let measureAxis = await mod.visualization.axis("Row ID");
+        let measureAxis = await mod.visualization.axis("Group By");
         if (measureAxis.parts.length == 0 || measureAxis.parts[0].expression !== "baserowid()" && !useCustomRowIdentifierExpression.value()) {
             ConfusionMatrix.createWarning(modDiv, context.styling.general.font.color, measureAxis, useCustomRowIdentifierExpression);
             mod.controls.errorOverlay.hide();
@@ -93,13 +93,12 @@ Spotfire.initialize(async (mod) => {
         //2.1b Get data from spotfire (comment block to use sample data from 2.1a)
         let rows = dataView.allRows();
 
-        //2.1b-1 check if axis have data
-        let arr1,arr2,hasErrors=false;
+        //2.1b-1 check if any of the axis have data
+        let arr1,arr2;
         try{
             arr1 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Actual").formattedValue() } });
             arr2 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Predicted").formattedValue() } });
         } catch(err){
-            hasErrors=true;
             d3.select(".container").html("");
             return;
         }
