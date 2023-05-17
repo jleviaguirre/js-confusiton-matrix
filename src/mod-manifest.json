@@ -22,9 +22,11 @@
         },
         "axes": [
             {
+                // "propertyControl": {"visibility": "hidden"},
+                "legendItem": {"defaultVisibility": "hidden"},
                 "name": "Group By",
                 "mode": "dual",
-                "placement": "top",
+                "placement": "none",
                 "automaticConfiguration":{"expressionHeuristics": "none"},
                 "dropTarget": {
                     "icon": "RowAxis",
@@ -47,7 +49,7 @@
                 "allowMultipleMeasures": false,
                 "allowNonAggregatingMeasures": true,
                 "mode": "categorical",
-                "placement": "bottom",
+                "placement": "top",
                 "dropTarget": {
                     "icon": "YAxis3D",
                     "description": "set {0} as the Predicted classification"
@@ -61,6 +63,6 @@
         "main.js",
         "d3.js",
         "Matrix.js",
-        "Colors.js"
+        "Utils.js"
     ]
 }

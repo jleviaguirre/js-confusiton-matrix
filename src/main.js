@@ -94,11 +94,11 @@ Spotfire.initialize(async (mod) => {
         let rows = dataView.allRows();
 
         //2.1b-1 check if any of the axis have data
-        let arr1,arr2;
-        try{
+        let arr1, arr2;
+        try {
             arr1 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Actual").formattedValue() } });
             arr2 = (await rows).map((r, i) => { return { dataViewRow: r, category: r.categorical("Predicted").formattedValue() } });
-        } catch(err){
+        } catch (err) {
             d3.select(".container").html("");
             return;
         }
@@ -122,12 +122,14 @@ Spotfire.initialize(async (mod) => {
             if (!Object.keys(chartSettings).length) modSettings.set(JSON.stringify(ConfusionMatrix.settings.chartSettings()));
 
             //ready to read interface values with stored mod settings
+            //Note: to add another setting, change index.html, main.js and Matrix.js (ConfusionMatrix.setings)
             document.getElementById("color1").value = chartSettings.color1;
             document.getElementById("color2").value = chartSettings.color2;
             document.getElementById("showLabels").checked = chartSettings.showLabels;
             document.getElementById("showValues").checked = chartSettings.showValues;
             document.getElementById("showZeros").checked = chartSettings.showZeros;
             document.getElementById("isSorted").checked = chartSettings.isSorted;
+            document.getElementById("showMetrics").checked = chartSettings.showMetrics;
 
             //on change, update modSettings
             function set() {
@@ -142,12 +144,16 @@ Spotfire.initialize(async (mod) => {
             document.getElementById("showValues").onchange = set;
             document.getElementById("showZeros").onchange = set;
             document.getElementById("isSorted").onchange = set;
+            document.getElementById("showMetrics").onchange = set;
 
             //close settings when clicking out of it
             document.getElementById("mod-container").addEventListener("click", ConfusionMatrix.settings.close);
 
             //close settings when clicking on close icon
             document.querySelector(".fromCloseBtn").addEventListener("click", ConfusionMatrix.settings.close);
+
+            //choose appropiate color for the config icon
+            document.querySelector(".configIcon").classList.add(context.styling.general.backgroundColor == "#2A2A2A" ? "dark" : "light")
 
         })();
 
@@ -156,20 +162,33 @@ Spotfire.initialize(async (mod) => {
 
 
         // let compute = ConfusionMatrix.compute(arr1,arr2);
-        let compute = ConfusionMatrix.compute(arr1, arr2, chartSettings.isSorted);
+        let matrix = ConfusionMatrix.compute(arr1, arr2, chartSettings.isSorted);
+        console.log(matrix, chartSettings.showMetrics);
+
+        let metricsTableHeight = 0;
+        if (chartSettings.showMetrics) {
+            ConfusionMatrix.renderMetrics(matrix.metrics, matrix.categories)
+
+            //get metrics table height
+            metricsTableHeight = parseInt(getComputedStyle(document.querySelector("#confusionMatrixMatrixTable")).height);
+        }
+
+        let markingInfo = await dataView.marking();
 
         ConfusionMatrix.draw({
             container: '.container',
-            height: windowSize.height,
+            height: windowSize.height - metricsTableHeight * 1.3,
             width: windowSize.width,
             maxColor: chartSettings.color1,
             minColor: chartSettings.color2,
             showLabels: chartSettings.showLabels,
             showValues: chartSettings.showValues,
             showZeros: chartSettings.showZeros,
-            data: compute.matrix,
-            labels: compute.categories
-        }, context.styling, mod.controls.tooltip);
+            matrix: matrix,
+            labels: matrix.categories
+        }, context.styling, mod.controls.tooltip,markingInfo);
+
+
 
 
         // Signal that the mod is ready for export.

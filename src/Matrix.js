@@ -2,19 +2,7 @@
 
 
 //not used yet. Maybe for tooltips. Returns the matrix accuracy
-function accuracy(confusionMatrix) {
-	var accuracy = 0;
-	var total = 0;
-	for (var i = 0; i < confusionMatrix.length; i++) {
-		for (var j = 0; j < confusionMatrix[i].length; j++) {
-			total += confusionMatrix[i][j];
-			if (i == j) {
-				accuracy += confusionMatrix[i][j];
-			}
-		}
-	}
-	return accuracy / total;
-}
+
 
 //helper function that returns the min and max from a confusion matrix. ConfusionMatrix function is used for the color scale.
 function getMinMax(data) {
@@ -34,6 +22,67 @@ function getMinMax(data) {
 
 //main ConfusionMatrix function that does ConfusionMatrix and that
 const ConfusionMatrix = {
+
+	metrics: (cm) => {
+		let tp = 0,
+			fn = 0,
+			fp = 0,
+			tn = 0,
+			macroPrecision = 0,
+			macroRecall = 0,
+			macroF1Score = 0;
+		let numClasses = cm.length;
+		let classMetrics = [];
+
+		for (let i = 0; i < numClasses; i++) {
+			for (let j = 0; j < numClasses; j++) {
+				if (i === j) {
+					tp = cm[i][j];
+				} else {
+					fn += cm[i][j];
+					fp += cm[j][i];
+				}
+			}
+
+			let precision = tp / (tp + fp);
+			let recall = tp / (tp + fn);
+			let f1Score = 2 * ((precision * recall) / (precision + recall));
+
+			if (isNaN(precision)) precision = 0;
+			if (isNaN(recall)) recall = 0;
+			if (isNaN(f1Score)) f1Score = 0;
+
+			macroPrecision += precision;
+			macroRecall += recall;
+			macroF1Score += f1Score;
+
+			classMetrics.push({
+				precision,
+				recall,
+				f1Score,
+			});
+
+			tp = 0;
+			fn = 0;
+			fp = 0;
+		}
+
+		macroPrecision /= numClasses;
+		macroRecall /= numClasses;
+		macroF1Score /= numClasses;
+
+		if (isNaN(macroPrecision)) macroPrecision = 0;
+		if (isNaN(macroRecall)) macroRecall = 0;
+		if (isNaN(macroF1Score)) macroF1Score = 0;
+
+		return {
+			macroPrecision,
+			macroRecall,
+			macroF1Score,
+			classMetrics,
+		};
+	},
+
 
 	//creates a warning on the mod to ensuer there is a rowid custom expression to ensure all data is parsed
 	createWarning: (modDiv, textColor, axis, customExpression) => {
@@ -55,7 +104,7 @@ const ConfusionMatrix = {
 		errorText.setAttribute("class", "error-text");
 		errorText.style.color = textColor;
 		errorText.innerHTML =
-			"ConfusionMatrix visualization is made to show unaggregated data.<br>Not selecting <strong>(Row Number)</strong> as the first measure may display aggregated data";
+			"ConfusionMatrix visualization is made to show unaggregated data.<br>Not selecting <strong>(Row Number)</strong> as the first measure may display aggregated data<p> You can change this setting later from the Group By Axis found in the visualization properties";
 		errorContainer.appendChild(errorText);
 
 		var buttonRow = document.createElement("div");
@@ -97,7 +146,6 @@ const ConfusionMatrix = {
 				axis.setExpression("<baserowid()>");
 			} else {
 				axis.parts.unshift({ displayName: "(Row Number)", expression: "baserowid()" })
-				// console.log(axis.parts.map(x => { return x.displayName }));//CACA
 				let newExpression = axis.parts.map(p => { return p.expression }).join(" NEST ");
 				axis.setExpression(`<${newExpression}>`);
 			}
@@ -141,7 +189,7 @@ const ConfusionMatrix = {
 		if (isSorted) categories.sort();
 
 		//init square matrix
-		let matrix = categories.map(() => {
+		let matrixData = categories.map(() => {
 			return (new Array(categories.length).fill([]))
 		})
 
@@ -169,12 +217,18 @@ const ConfusionMatrix = {
 			let x = xy[0], y = xy[1]
 			let dataViewRows = matrixValues[key].dataViewRows
 			let el = { x: x, y: y, rowIds: dataViewRows, count: dataViewRows.length }
-			matrix[x][y] = dataViewRows
+			matrixData[x][y] = dataViewRows
 		};
 
+		let counts = matrixData.map(x => x.map(x => x.length));
+		matrixData.counts = counts;
+
 		return {
-			matrix: matrix,
-			categories: categories
+			data: matrixData,
+			counts: counts,
+			minMax: getMinMax(counts),
+			categories: categories,
+			metrics: ConfusionMatrix.metrics(matrixData.counts)
 		};
 	},
 
@@ -187,30 +241,33 @@ const ConfusionMatrix = {
 				.scales.font.fontFamily
 				.scales.font.color
 	*/
-	draw: function (options, styling, tooltip) {
+	draw: function (options, styling, tooltip, markingInfo) {
 
 		//need to compute left and bottom margins depending on labels
 		//TODO
 
-		let counts = options.data.map(x => x.map(x => x.length));
-		let minMax = getMinMax(counts)
+		// let counts = options.matrix.data.map(x => x.map(x => x.length));
 
-		let margin = { top: 5, right: 5, bottom: 80, left: 80 },
-			width = options.width - 50,    //TODO cut vertical labels width
-			height = options.height - 50, //TODO cut text height
-			data = options.data,
+
+		let margin = { top: 25, right: 5, bottom: 80, left: 80 },
+			width = options.width - 80,
+			height = options.height - 70,
+			data = options.matrix.data,
 			container = options.container,
 			labelsData = options.labels,
 			numrows = data.length,
 			numcols = data[0].length,
-			minColor = options.maxColor,
 			maxColor = options.minColor,
+			minColor = options.maxColor,
 			showValues = options.showValues,
 			showLabels = options.showLabels,
 			showZeros = options.showZeros,
-			min = minMax[0],
-			max = minMax[1];
-			
+			counts = options.matrix.counts,
+			min = options.matrix.minMax[0],
+			max = options.matrix.minMax[1],
+			metrics = options.matrix.metrics;
+
+
 
 
 		// data = options.data.map(x=>x.map(x=>x.length));
@@ -250,7 +307,7 @@ const ConfusionMatrix = {
 			.domain(d3.range(numrows))
 			.rangeBands([0, height]);
 
-		var colorMap = d3.scale.linear()
+		var colorScale = d3.scale.linear()
 			.domain([min, max])
 			.range([minColor, maxColor]); //box  fill
 
@@ -260,31 +317,58 @@ const ConfusionMatrix = {
 			.attr("class", "row")
 			.attr("transform", function (d, i) { return "translate(0," + y(i) + ")"; });
 
+		var markRows = function(dvRows2mark){
+				//determine marking operation
+				//MarkingOperation: "Replace" | "Add" | "Subtract" | "Toggle" | "Intersect" | "ToggleOrAdd"
+				let markingOperation = null
+				if (d3.event.ctrlKey) markingOperation = "Toggle"
+				dvRows2mark.forEach(r=>{r.mark(markingOperation)});
+		}
+
 		var cell = row.selectAll(".cell")
 			.data(function (d, i) { return d.map(x => x.length) })
 			.enter().append("g")
-			.attr("class", "cell")
+			.attr("class", (val,x,y)=>{
+				if (!data[y][x].some(r=>r.isMarked())) return "cell";
+			})
+			.style("fill", function (val,x,y) { 
+				//return styling.general.font.color 
+				if (data[y][x].some(r=>r.isMarked())) return markingInfo.colorHexCode;
+		   })
+
+			
+			.on("click",(val,x,y)=>{markRows(data[y][x])})
+
 			.attr("transform", function (d, i) { return "translate(" + x(i) + ", 0)"; })
+
+			
 			.on("mouseover", (val, y, x) => {
 				if (!val) return; //no data for zero count
 				if (!true) { //test oob tooltip (can't show cell value, so we use custom method, which is data[x][y].length)
-					tooltip.show(data[x][y][0]) 
+					tooltip.show(data[x][y][0])
 				} else {
 					let dvr = data[x][y][0]
+					let actual = (dvr.categorical("Actual").formattedValue())
+					let predicted = (dvr.categorical("Predicted").formattedValue())
 					let tt = "Count:\t\t" + val + "\n"
-					tt += "Actual:\t\t" + (dvr.categorical("Actual").formattedValue()) + "\n"
-					tt += "Predicted:\t" + (dvr.categorical("Predicted").formattedValue())
+					tt += "Actual:\t\t" + actual + "\n";
+					tt += "Predicted:\t" + predicted;
+					if(actual==predicted){
+					tt += "\nPrecision:\t" + metrics.classMetrics[x].precision.toFixed(3);
+					tt += "\nRecall:\t\t" + metrics.classMetrics[x].recall.toFixed(3);
+					tt += "\nF1 Score:\t" + metrics.classMetrics[x].f1Score.toFixed(3);
+					}
 					tooltip.show(tt) //use custom tooltips that shows not only categories, but cell value (TODO)
 				}
 			})
 			.on("mouseout", () => { tooltip.hide() });
 
 
-			//horizontal grid lines
+		//horizontal grid lines
 		cell.append('rect')
 			.attr("width", x.rangeBand())
 			.attr("height", y.rangeBand())
-			.style("stroke", styling.scales.line.stroke) 
+			.style("stroke", styling.scales.line.stroke)
 
 		// show values	
 		if (showValues) cell.append("text")
@@ -292,14 +376,24 @@ const ConfusionMatrix = {
 			.attr("x", x.rangeBand() / 2)
 			.attr("y", y.rangeBand() / 2)
 			.attr("text-anchor", "middle")
-			// .style("fill", function (d, i) { return d >= 0.5 ? 'white' : 'black'; }) //this one is good if the confusion matrix scale is from 0 to 1 to display accuracy
-			.style("fill", function(d,i){return Colors.bestContrastColor(colorMap(i),styling.general.font.color)})
+			//  .style("fill", function (d, i) { return d >= 0.5 ? 'white' : 'black'; }) //this one is good if the confusion matrix scale is from 0 to 1 to display accuracy
+			.style("fill", function (d, x,y) { 
+				 //return styling.general.font.color 
+				 //background could be the marking color or the cell color
+				 isMarked = data[y][x].some(r=>r.isMarked());
+				 let background = isMarked?colorScale(d):markingInfo.colorHexCode;
+				 if (isMarked) return Colors.bestContrastColor(background,styling.general.font.color);
+				 return Colors.getContrastingTextColor(background, styling.general.font.color,100);
+			})
 			.text(function (d, i) { return showZeros ? d ? d : "" : d });
+
 
 		//colorize cells
 		row.selectAll(".cell")
-			.data(function (d, i) {return counts[i]; })
-			.style("fill", function(d,i){return d>0?colorMap(i):styling.general.backgroundColor});
+			// .data(function (d, i) { return counts[i]; })
+			.style("fill", function (d,i,j) {
+				 return d > 0 ? colorScale(d) :styling.general.backgroundColor 
+			});
 
 		var labels = svg.append('g')
 			.attr('class', "labels")
@@ -325,29 +419,39 @@ const ConfusionMatrix = {
 
 		//x labels
 		columnLabels.append("text")
-		.attr("x", 0 )
-		// .attr("y", y.rangeBand() / 2 )
-		.style("text-anchor", "left")
-		.style("fill", styling.scales.font.color)
-		.style("font-family", styling.scales.font.fontFamily)
-		.style("font-size", styling.scales.font.fontSize)
-		.style("font-weight", styling.scales.font.fontWeight)
-		// .attr("transform", `translate(0, ${-y.rangeBand() / 2}) rotate(-90)`)
-		.text(function (d, i) { return d; })
-		.on("mouseover", (text, row) => { tooltip.show(text) })
-		.on("mouseout", tooltip.hide)
-		.each(function () { ellipsis(d3.select(this), cellWidth) })
-		.each(function () { 
-			self = d3.select(this);
-			//center
-			var textLength = self.node().getComputedTextLength();
-			self.attr("x",(cellWidth-textLength)/2)
+			.attr("x", 0)
+			// .attr("y", y.rangeBand() / 2 )
+			.style("text-anchor", "left")
+			.style("fill", styling.scales.font.color)
+			.style("font-family", styling.scales.font.fontFamily)
+			.style("font-size", styling.scales.font.fontSize)
+			.style("font-weight", styling.scales.font.fontWeight)
+			// .attr("transform", `translate(0, ${-y.rangeBand() / 2}) rotate(-90)`)
+			.text(function (d, i) { return d; })
+			.on("mouseover", (text, row) => { tooltip.show(text) })
+			.on("click",(val,x,y)=>{ 
+				if (d3.event.altKey) {markRows(data[x][x])}
+				else {
+					let rows=[]
+					for(i=0;i<numcols;i++){
+						if(data[i][x].length) rows.push(data[i][x])
+					}
+					markRows(rows.flat());
+				}
+			})
+			.on("mouseout", tooltip.hide)
+			.each(function () { ellipsis(d3.select(this), cellWidth) })
+			.each(function () {
+				self = d3.select(this);
+				//center
+				var textLength = self.node().getComputedTextLength();
+				self.attr("x", (cellWidth - textLength) / 2)
 
-			//margin top 1/2 font height
-			txtHeight = self.node().getBoundingClientRect().height;
-			self.attr("y",y.rangeBand()/4 + txtHeight/2);
+				//margin top 1/2 font height
+				txtHeight = self.node().getBoundingClientRect().height;
+				self.attr("y", y.rangeBand() / 4 + txtHeight / 2);
 
-		});
+			});
 
 		var rowLabels = labels.selectAll(".row-label")
 			.data(labelsData)
@@ -357,7 +461,7 @@ const ConfusionMatrix = {
 
 		//y ticks
 		rowLabels.append("line")
-			.style("stroke", styling.scales.tick.stroke) 
+			.style("stroke", styling.scales.tick.stroke)
 			.style("stroke-width", "1px")
 			.attr("x1", -10)
 			.attr("x2", -15)
@@ -377,19 +481,29 @@ const ConfusionMatrix = {
 			.text(function (d, i) { return d; })
 			.on("mouseover", (text, row) => { tooltip.show(text) })
 			.on("mouseout", tooltip.hide)
+			.on("click",(val,x,y)=>{ 
+				if (d3.event.altKey) {markRows(data[x][x])}
+				else {
+					let rows=[]
+					for(i=0;i<numcols;i++){
+						if(data[x][i].length) rows.push(data[x][i])
+					}
+					markRows(rows.flat());
+				}
+			})
 			.each(function () { ellipsis(d3.select(this), margin.left) })
-			.each(function () { 
+			.each(function () {
 				self = d3.select(this);
 				txtHeight = self.node().getBoundingClientRect().height;
-				self.attr("y",y.rangeBand()/2 + txtHeight/4);
+				self.attr("y", y.rangeBand() / 2 + txtHeight / 4);
 			});
-	
+
 
 
 
 		//helper function to add overflowing text (like css text-overflow:ellipsis)
 		function ellipsis(self, width) {
-			
+
 			var textLength = self.node().getComputedTextLength(),
 				text = self.text();
 
@@ -413,6 +527,67 @@ const ConfusionMatrix = {
 
 	},
 
+	renderMetrics: (metrics,labels) => {
+
+		let table = document.createElement("table");
+		let thead = document.createElement("thead");
+		table.id = "confusionMatrixMatrixTable"
+		table.appendChild(thead);
+		let headers = ["Class", "Precision", "Recall", "F1 Score"];
+		let headerRow = document.createElement("tr");
+
+
+		headers.forEach(function (header) {
+			let headerCell = document.createElement("th");
+			headerCell.innerHTML = header;
+			headerRow.appendChild(headerCell);
+		});
+
+		thead.appendChild(headerRow);
+
+		metrics.classMetrics.forEach(function (classMetric, index) {
+			let row = document.createElement("tr");
+			let classCell = document.createElement("td");
+			classCell.innerHTML = labels[index];
+			row.appendChild(classCell);
+
+			let precisionCell = document.createElement("td");
+			precisionCell.innerHTML = classMetric.precision.toFixed(3);
+			row.appendChild(precisionCell);
+
+			let recallCell = document.createElement("td");
+			recallCell.innerHTML = classMetric.recall.toFixed(3);
+			row.appendChild(recallCell);
+
+			let f1ScoreCell = document.createElement("td");
+			f1ScoreCell.innerHTML = classMetric.f1Score.toFixed(3);
+			row.appendChild(f1ScoreCell);
+
+			table.appendChild(row);
+
+		});
+		//add macroMetrix (macro Presicion, Macro Recall & Macro F1 Score AKA Total Class Averages)
+		let macroMetrix = `<th>Average</th>
+			<th>${metrics.macroPrecision.toFixed(3)}</th>
+			<th>${metrics.macroRecall.toFixed(3)}</th>
+			<th>${metrics.macroF1Score.toFixed(3)}</th>`
+		row = document.createElement("tr");
+		row.style.borderTop="1px solid whitesmoke";
+		row.innerHTML = macroMetrix;
+		table.appendChild(row);
+
+		let metricsContainer = document.querySelector(".metricsContainer");
+		metricsContainer.innerHTML = "";
+		metricsContainer.appendChild(table);
+
+		// TableTools.makeColumnsResizable(table.id); 
+
+		//make columns sortable on click (TODO)
+		// TableTools.sortTable(table.id,1,"asc")
+		// TableTools.sortTable(table.id,1,"desc")
+	},
+
+
 	//settings dialog
 	settings: {
 
@@ -423,7 +598,8 @@ const ConfusionMatrix = {
 				showLabels: document.getElementById("showLabels").checked,
 				showValues: document.getElementById("showValues").checked,
 				showZeros: document.getElementById("showZeros").checked,
-				isSorted: document.getElementById("isSorted").checked
+				isSorted: document.getElementById("isSorted").checked,
+				showMetrics: document.getElementById("showMetrics").checked
 			}
 		},
 

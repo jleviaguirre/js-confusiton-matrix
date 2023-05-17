@@ -119,15 +119,15 @@ body {
 
 /* config icon*/
 #configButton {
-    fill: rgba(68, 68, 68, 0.3);
     top: 0px !important;
     right: 0px !important;
     position: fixed !important;
 }
+.light           {fill: #bdbfc3}
+.light:hover {fill: #858991}
 
-#configButton svg:hover {
-    fill: rgba(68, 68, 68, 0.7)
-}
+.dark           {fill: #7c7c7c}
+.dark:hover {fill: #929292}
 
 
 /* config dialog */
@@ -150,7 +150,7 @@ body {
     border-left-color: #D8D9DC;
     background-color: #FFFFFF;
 
-    padding-top: 40px;
+    padding-top: 20px;
     padding-left: 20px;
     padding-bottom: 10px;
     padding-right: 10px;
@@ -158,6 +158,7 @@ body {
     font-size: 15px !important;
     font-family: "Roboto", Arial, Helvetica, sans-serif !important;
     font-weight: normal !important;
+    color:black;
 
     line-height: 2.5;
 
@@ -189,5 +190,27 @@ body {
 .cell, .column-label text{
     cursor: default;
 }
+
+
+/*confusion matrix metrics table*/
+#confusionMatrixMatrixTable{
+    border:1px solid #f0f1f2;
+    border-collapse: collapse;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space:nowrap;
+    width: 100%;
+    cursor: default;
+}
+
+#confusionMatrixMatrixTable tr td:first-child,
+#confusionMatrixMatrixTable tr th:first-child{
+    text-align: left;
+}
+
+/* #confusionMatrixMatrixTable>tr:last-child{
+    border-top: 1px solid black;
+} */
+
 
 
